@@ -106,7 +106,7 @@ def give_column_names_rows(base64_img, columns):
 
 def generate_final_csv(pdf_path, starting_page, ending_page, column_names, rows):
     page_text = ""
-        with pdfplumber.open(pdf_path) as pdf:
+    with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages[starting_page - 1:ending_page]:
             page_text += page.extract_text()
             page_text += "\n"
