@@ -8,3 +8,4 @@ pdfplumber
 pymupdf
 pillow
 streamlit-aggrid
+streamlit-pdf-viewer
