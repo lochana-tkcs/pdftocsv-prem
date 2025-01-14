@@ -47,11 +47,17 @@ FORMAT1 = {
     }
 }
 
-def pdf_viewer(input, width=700, height=800):
-    # Convert binary data to base64 for embedding
-    base64_pdf = base64.b64encode(input).decode('utf-8')
-    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="{width}" height="{height}" style="border:none;"></iframe>'
-    st.components.v1.html(pdf_display, height=height + 50)
+# def pdf_viewer(input, width=1500, height=800):
+#     # Convert binary data to base64 for embedding
+#     base64_pdf = base64.b64encode(input).decode('utf-8')
+#     pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="{width}" height="{height}" style="border:none;"></iframe>'
+#     st.components.v1.html(pdf_display, height=height + 50)
+
+def display_pdf(file_path):
+    with open(file_path, "rb") as f:
+        base64_pdf = base64.b64encode(f.read()).decode("utf-8")
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="1000" type="application/pdf"></iframe>'
+    st.markdown(pdf_display, unsafe_allow_html=True)
 
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
@@ -205,11 +211,20 @@ base64_img = None
 # File Upload
 uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
 if uploaded_file is not None:
+    # binary_data = uploaded_file.getvalue()
     binary_data = uploaded_file.getvalue()
+
+    # Convert the binary data to base64 to embed in an iframe
+    base64_pdf = base64.b64encode(binary_data).decode('utf-8')
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="700" height="400" type="application/pdf"></iframe>'
+
+    st.markdown(pdf_display, unsafe_allow_html=True)
     st.write("Preview of the uploaded PDF:")
-    pdf_viewer(input=binary_data)
+    # pdf_viewer(input=binary_data)
+    # display_pdf(uploaded_file)
 
     pdf_path = "uploaded.pdf"
+    # display_pdf(pdf_path)
     with open(pdf_path, "wb") as f:
         f.write(uploaded_file.read())
     st.success("PDF uploaded successfully!")
