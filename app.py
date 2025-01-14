@@ -231,9 +231,16 @@ if uploaded_file is not None:
 
     # User Inputs
     start_page = st.number_input("Starting Page", min_value=1, step=1)
-    end_page = st.number_input("Ending Page", min_value=start_page, step=1)
+    end_page = st.number_input("Ending Page (Note: For internal testing purposes, the page limit is restricted to 3 pages.)", min_value=start_page,
+                               max_value=start_page + 2, step=1)
+
+    # Display a message about the page limit
+    # st.text("Note: For internal testing purposes, the page limit is restricted to 3 pages.")
+
+    # Number input for the number of columns
     num_columns = st.number_input("Number of Columns", min_value=1, step=1)
 
+    # Proceed only when required inputs are provided, and "Next" is clicked
     if start_page and end_page and num_columns and st.button("Next"):
         output_image_path = "cropped_section.png"
 
