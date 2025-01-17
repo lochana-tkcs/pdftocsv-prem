@@ -78,7 +78,7 @@ def clean_data(input_string):
     cleaned_string = re.sub(r"[`~]", "", input_string)
     return cleaned_string
 
-def give_column_names_rows(base64_img, columns):
+def give_column_names_rows_2(base64_img, columns):
     response1 = client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -86,7 +86,7 @@ def give_column_names_rows(base64_img, columns):
                 "role": "user",
                 "content": [
                     {"type": "text",
-                     "text": f"Return JSON document with data (column names and 5 rows of the table). Only return JSON not other text. The dataset has {columns} columns"},
+                     "text": f"Return JSON document with data (column names and 5 rows of the table). Only return JSON not other text. *IMPORTANT* Make sure the dataset has {columns} columns"},
                     {
                         "type": "image_url",
                         "image_url": {"url": f"{base64_img}"}
@@ -105,6 +105,38 @@ def give_column_names_rows(base64_img, columns):
     rows = [list(entry.values()) for entry in data]
     print(column_names)
     print(rows)
+    # column_names = ['Resident Name', 'Order Description', 'Order Directions', 'Order Category', 'Start Date', 'Indications for Use']
+    # rows = [['BURROLA, ADIS (MH100797)', 'Aplisol Solution 5 UNIT/0.1ML (Tuberculin PPD)', 'Inject 0.1 ml intradermally in the evening every 356 day(s) for TB Screening Every evening within annually. Record result within 72 hours. Perform Chest X-Ray if patient refused', 'Pharmacy', '03/02/2024', 'TB Screening'], ['BURROLA, ADIS (MH100797)', 'Atorvastatin Calcium Oral Tablet 20 MG (Atorvastatin Calcium)', 'Give 1 tablet by mouth at bedtime for hyperlipidemia', 'Pharmacy', '07/19/2024', 'hyperlipidemia'], ['BURROLA, ADIS (MH100797)', 'Cholecalciferol Tablet 1000 UNIT', 'Give 2 tablet by mouth one time a day for supplement', 'Pharmacy', '08/31/2024', 'supplement'], ['BURROLA, ADIS (MH100797)', 'hydraLAZINE HCl Oral Tablet 25 MG (Hydralazine HCl)', 'Give 1 tablet by mouth every 6 hours as needed for SBP>170.', 'Pharmacy', '03/01/2024', 'SBP>170.'], ['CAMPELL, ROBERT B (MH100302)', 'AmLODIPine Besylate Tablet 5 MG', 'Give 1 tablet by mouth one time a day for HTN Hold for SBP <100 or HR <60', 'Pharmacy', '10/18/2024', 'HTN']]
+
+    return column_names, rows
+
+def give_column_names_rows_1(base64_img):
+    response1 = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text",
+                     "text": f"Return JSON document with data (column names and 5 rows of the table). Only return JSON not other text."},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"{base64_img}"}
+                    },
+                ]
+            },
+        ],
+        response_format=FORMAT1,
+        max_tokens=500,
+    )
+
+    output = response1.choices[0].message.content.strip()
+    output_dict = json.loads(output)
+    data = output_dict["data"]
+    column_names = list(data[0].keys())
+    rows = [list(entry.values()) for entry in data]
+    # print(column_names)
+    # print(rows)
     # column_names = ['Resident Name', 'Order Description', 'Order Directions', 'Order Category', 'Start Date', 'Indications for Use']
     # rows = [['BURROLA, ADIS (MH100797)', 'Aplisol Solution 5 UNIT/0.1ML (Tuberculin PPD)', 'Inject 0.1 ml intradermally in the evening every 356 day(s) for TB Screening Every evening within annually. Record result within 72 hours. Perform Chest X-Ray if patient refused', 'Pharmacy', '03/02/2024', 'TB Screening'], ['BURROLA, ADIS (MH100797)', 'Atorvastatin Calcium Oral Tablet 20 MG (Atorvastatin Calcium)', 'Give 1 tablet by mouth at bedtime for hyperlipidemia', 'Pharmacy', '07/19/2024', 'hyperlipidemia'], ['BURROLA, ADIS (MH100797)', 'Cholecalciferol Tablet 1000 UNIT', 'Give 2 tablet by mouth one time a day for supplement', 'Pharmacy', '08/31/2024', 'supplement'], ['BURROLA, ADIS (MH100797)', 'hydraLAZINE HCl Oral Tablet 25 MG (Hydralazine HCl)', 'Give 1 tablet by mouth every 6 hours as needed for SBP>170.', 'Pharmacy', '03/01/2024', 'SBP>170.'], ['CAMPELL, ROBERT B (MH100302)', 'AmLODIPine Besylate Tablet 5 MG', 'Give 1 tablet by mouth one time a day for HTN Hold for SBP <100 or HR <60', 'Pharmacy', '10/18/2024', 'HTN']]
 
@@ -195,7 +227,8 @@ def generate_final_csv(pdf_path, starting_page, ending_page, column_names, rows)
     # '''
     return table_output
 
-
+if "base64_img" not in st.session_state:
+    st.session_state.base64_img = None
 if "column_names" not in st.session_state:
     st.session_state.column_names = []
 if "rows" not in st.session_state:
@@ -207,7 +240,7 @@ if "preview_ready" not in st.session_state:
 
 # Title
 st.title("PDF Table Extractor")
-base64_img = None
+# base64_img = None
 # File Upload
 uploaded_file = st.file_uploader("Upload your PDF file", type="pdf")
 if uploaded_file is not None:
@@ -234,28 +267,27 @@ if uploaded_file is not None:
     end_page = st.number_input("Ending Page (Note: For internal testing purposes, the page limit is restricted to 3 pages.)", min_value=start_page,
                                max_value=start_page + 2, step=1)
 
-    # Display a message about the page limit
-    # st.text("Note: For internal testing purposes, the page limit is restricted to 3 pages.")
-
-    # Number input for the number of columns
-    num_columns = st.number_input("Number of Columns", min_value=1, step=1)
-
-    # Proceed only when required inputs are provided, and "Next" is clicked
-    if start_page and end_page and num_columns and st.button("Next"):
+    if start_page and end_page and st.button("Next"):
         output_image_path = "cropped_section.png"
 
+        # Extract the section of the PDF as an image (placeholder function)
         extract_section_as_image(pdf_path, start_page - 1, output_image_path)
 
-        base64_img = f"data:image/png;base64,{encode_image(output_image_path)}"
+        # Convert the extracted image to base64 (placeholder function)
+        st.session_state.base64_img = f"data:image/png;base64,{encode_image(output_image_path)}"
 
-        st.session_state.column_names, st.session_state.rows = give_column_names_rows(
-            base64_img, num_columns
-        )
+        # Generate column names and rows (placeholder function)
+        st.session_state.column_names, st.session_state.rows = give_column_names_rows_1(st.session_state.base64_img)
+        st.session_state.num_columns = len(st.session_state.column_names)  # Automatically set the number of columns
         st.session_state.preview_ready = True  # Mark preview as ready
 
     # Display Columns and Rows if preview is ready
     if st.session_state.preview_ready:
         st.subheader("Preview Table")
+
+        st.write(f"Number of Columns Detected: {st.session_state.num_columns}")
+        new_column_count = st.number_input("Change Number of Columns", min_value=1, value=st.session_state.num_columns,
+                                           step=1)
 
         # Create a DataFrame for columns and rows
         row_df = pd.DataFrame(st.session_state.rows, columns=st.session_state.column_names)
@@ -293,15 +325,13 @@ if uploaded_file is not None:
             next_clicked = col2.button("Generate CSV")
 
         if regenerate_clicked:
-            # Regenerate column names and rows
-            st.session_state.column_names, st.session_state.rows = give_column_names_rows(
-                base64_img, num_columns
-            )
-            st.rerun()  # Refresh the app to show regenerated data
+            print(new_column_count)
+            st.session_state.column_names, st.session_state.rows = give_column_names_rows_2(st.session_state.base64_img,
+                                                                                            new_column_count)
+            st.session_state.num_columns = new_column_count  # Update the column count in session state
+            st.rerun()
 
         if next_clicked:
-            # Process and generate final CSV
-            # st.write("Processing data from the PDF...")
             table_output = generate_final_csv(pdf_path, start_page, end_page, st.session_state.column_names, st.session_state.rows)
             data_io = StringIO(table_output)
             df = pd.read_csv(data_io, delimiter="|", on_bad_lines="skip")
@@ -309,11 +339,3 @@ if uploaded_file is not None:
             # Display CSV content
             st.subheader("Generated CSV")
             st.dataframe(df, use_container_width=True)
-
-            # # Provide download button
-            # st.download_button(
-            #     label="Download CSV",
-            #     data=df.to_csv(index=False),
-            #     file_name="extracted_table.csv",
-            #     mime="text/csv",
-            # )
